@@ -10,11 +10,11 @@ export class Whitelist extends Ownable {
 
   deploy(args: DeployArgs & CustomDeployArgs) {
     super.deploy(args);
-    this.whitelistRoot.set(Field(0));
     this.ownableInitialize(args.owner);
   }
 
-  @method setZeroWhitelistRoot() {
+  // TODO: Implement in deploy
+  @method initializer() {
     this.whitelistRoot.set(Field(0));
   }
 }

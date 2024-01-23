@@ -40,21 +40,32 @@ describe('Whitelist', () => {
     });
     await txn.prove();
     await txn.sign([deployerKey, zkAppPrivateKey]).send();
+    // For initializer
+    /*     const initializerTx = await Mina.transaction(deployerAccount, () => {
+      zkApp.initializer();
+    });
+    await initializerTx.prove();
+    await initializerTx.sign([deployerKey]).send(); */
   }
 
   it('should deploy "Whitelist" smart contract', async () => {
     await localDeploy();
     const ownerAddress = zkApp.owner.get();
     expect(ownerAddress).toEqual(deployerAccount);
+    const initializerTx = await Mina.transaction(deployerAccount, () => {
+      zkApp.initializer();
+    });
+    await initializerTx.prove();
+    await initializerTx.sign([deployerKey]).send();
     const whitelistRoot = zkApp.whitelistRoot.get();
+    Field(0).assertEquals(whitelistRoot);
+    // TODO: If we run initializer function, we take the error "renounceOwnership" function
+    // But if we don't run initializer function, "renounceOwnership" function is working
     const txn = await Mina.transaction(deployerAccount, () => {
-      zkApp.setZeroWhitelistRoot();
+      zkApp.renounceOwnership();
     });
     await txn.prove();
     await txn.sign([deployerKey]).send();
-    console.log('whitelist', whitelistRoot);
-    console.log('Field(0)', Field(0));
-    Field(0).assertEquals(whitelistRoot);
   });
 
   it('should run "renounceOwnership" function', async () => {

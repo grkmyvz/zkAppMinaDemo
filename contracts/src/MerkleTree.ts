@@ -39,10 +39,6 @@ export class MerkleTreePoint extends SmartContract {
   }
 
   @method addAccount(account: Account, path: MyMerkleWitness) {
-    let merkleRoot = this.merkleRoot.getAndRequireEquals();
-
-    path.calculateRoot(Field(0)).assertEquals(merkleRoot);
-
     let newMerkleRoot = path.calculateRoot(account.hash());
 
     this.merkleRoot.set(newMerkleRoot);

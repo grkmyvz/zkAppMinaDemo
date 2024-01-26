@@ -72,6 +72,21 @@ describe('MoneyTransfer', () => {
     await txn.sign([deployerKey, zkAppPrivateKey]).send();
   }
 
+  async function increasePointForzKApp(index: bigint, account: Account) {
+    let w = Tree.getWitness(index);
+    let witness = new MyMerkleWitness(w);
+
+    let txn = await Mina.transaction(deployerAccount, () => {
+      zkApp.increasePoint(account, witness);
+    });
+    await txn.prove();
+    await txn.sign([deployerKey]).send();
+
+    account.points = account.points.add(1);
+    Tree.setLeaf(index, account.hash());
+    zkApp.merkleRoot.getAndRequireEquals().assertEquals(Tree.getRoot());
+  }
+
   it('should deploy', async () => {
     await localDeploy();
   });
@@ -79,20 +94,9 @@ describe('MoneyTransfer', () => {
   it('should increase point', async () => {
     await localDeploy();
 
-    let w = Tree.getWitness(0n);
-    let witness = new MyMerkleWitness(w);
-
     expect(alice.points).toEqual(UInt32.from(0));
 
-    let txn = await Mina.transaction(deployerAccount, () => {
-      zkApp.increasePoint(alice, witness);
-    });
-    await txn.prove();
-    await txn.sign([deployerKey]).send();
-
-    alice.points = alice.points.add(1);
-    Tree.setLeaf(0n, alice.hash());
-    zkApp.merkleRoot.getAndRequireEquals().assertEquals(Tree.getRoot());
+    await increasePointForzKApp(0n, alice);
 
     expect(alice.points).toEqual(UInt32.from(1));
   });
@@ -102,7 +106,6 @@ describe('MoneyTransfer', () => {
 
     let w = Tree.getWitness(2n);
     let witness = new MyMerkleWitness(w);
-
     let txn = await Mina.transaction(deployerAccount, () => {
       zkApp.addAccount(bob, witness);
     });
@@ -111,5 +114,12 @@ describe('MoneyTransfer', () => {
 
     Tree.setLeaf(2n, bob.hash());
     zkApp.merkleRoot.getAndRequireEquals().assertEquals(Tree.getRoot());
+
+    expect(Tree.getRoot()).toEqual(zkApp.merkleRoot.getAndRequireEquals());
+
+    await increasePointForzKApp(2n, bob);
+
+    expect(bob.points).toEqual(UInt32.from(1));
+    expect(Tree.getRoot()).toEqual(zkApp.merkleRoot.getAndRequireEquals());
   });
 });

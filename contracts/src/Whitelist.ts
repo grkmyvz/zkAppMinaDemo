@@ -1,20 +1,28 @@
-import { DeployArgs, Field, PublicKey, State, method, state } from 'o1js';
-import { Ownable } from './Ownable';
+import {
+  DeployArgs,
+  Field,
+  MerkleTree,
+  MerkleWitness,
+  Poseidon,
+  PublicKey,
+  SmartContract,
+  State,
+  method,
+  state,
+} from 'o1js';
 
-interface CustomDeployArgs {
-  owner: PublicKey;
-}
-
-export class Whitelist extends Ownable {
+export class Whitelist extends SmartContract {
   @state(Field) public whitelistRoot = State<Field>();
 
-  deploy(args: DeployArgs & CustomDeployArgs) {
-    super.deploy(args);
-    this.ownableInitialize(args.owner);
+  @method init() {
+    super.init();
+    this.whitelistRoot.set(Field(0));
   }
 
-  // TODO: Implement in deploy
-  @method initializer() {
-    this.whitelistRoot.set(Field(0));
+  @method addAddress(address: PublicKey) {
+    const currentRoot = this.whitelistRoot.getAndRequireEquals();
+    const newLeaf = Poseidon.hash([address.toFields()[0]]);
+    const newRoot = MerkleTree.update(currentRoot, newLeaf);
+    this.whitelistRoot.set(newRoot);
   }
 }

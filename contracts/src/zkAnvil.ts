@@ -70,6 +70,10 @@ export class zkAnvil extends SmartContract {
     this.merkleRoot.set(Field(0));
   }
 
+  @method getTimestamp(): UInt64 {
+    return this.network.timestamp.getAndRequireEquals();
+  }
+
   @method addUser(user: User, path: ZkAnvilMerkleWitness) {
     AccountUpdate.createSigned(this.sender);
     this.sender.assertEquals(this.admin.getAndRequireEquals());
@@ -116,7 +120,21 @@ export class zkAnvil extends SmartContract {
     let merkleRoot = this.merkleRoot.getAndRequireEquals();
     path.calculateRoot(user.hash()).assertEquals(merkleRoot);
 
-    let isSuccess: Bool = Bool(false);
+    let payerUpdate = AccountUpdate.createSigned(this.sender);
+    payerUpdate.send({ to: this.address, amount: UInt64.from(5) });
+
+    let ts = this.getTimestamp();
+    let isSuccess = Bool.or(
+      ts.mod(UInt64.from(10)).equals(UInt64.from(0)),
+      Bool.or(
+        ts.mod(UInt64.from(10)).equals(UInt64.from(3)),
+        Bool.or(
+          ts.mod(UInt64.from(10)).equals(UInt64.from(5)),
+          ts.mod(UInt64.from(10)).equals(UInt64.from(7))
+        )
+      )
+    );
+    Provable.log('Timestamp', ts, 'isSuccess', isSuccess);
 
     let id = Provable.if(isSuccess, item.id, UInt32.from(0));
     let upgraded = Provable.if(
@@ -139,9 +157,10 @@ export class zkAnvil extends SmartContract {
     return isSuccess;
   }
 
-  @method getTimestamp(): UInt64 {
-    // let ts: UInt64;
-    // ts = this.network.timestamp.getAndRequireEquals();
-    return this.network.timestamp.getAndRequireEquals();
+  @method withdraw(amount: UInt64) {
+    AccountUpdate.createSigned(this.sender);
+    this.sender.assertEquals(this.admin.getAndRequireEquals());
+
+    this.send({ to: this.sender, amount });
   }
 }

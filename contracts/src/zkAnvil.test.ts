@@ -11,6 +11,7 @@ import {
   PrivateKey,
   PublicKey,
   UInt32,
+  UInt64,
 } from 'o1js';
 import { Item, User, ZkAnvilMerkleWitness, zkAnvil } from './zkAnvil';
 import { itemList } from './items';
@@ -35,6 +36,10 @@ describe('zkAnvil', () => {
   let user2: User;
 
   let tree: MerkleTree;
+
+  async function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
   async function localDeploy() {
     const txn = await Mina.transaction(adminAccount, () => {
@@ -69,6 +74,8 @@ describe('zkAnvil', () => {
     userAccount: PublicKey,
     userKey: PrivateKey
   ) {
+    let zkBalanceBefore = Mina.getBalance(zkAppAddress);
+
     let w = tree.getWitness(witnessIndex);
     let witness = new ZkAnvilMerkleWitness(w);
 
@@ -79,6 +86,9 @@ describe('zkAnvil', () => {
     });
     await buyItemTxn.prove();
     await buyItemTxn.sign([userKey]).send();
+
+    let zkBalanceAfter = Mina.getBalance(zkAppAddress);
+    expect(zkBalanceAfter).toEqual(zkBalanceBefore.add(UInt64.from(5)));
 
     user = user.updateItem(slotIndex, item);
     tree.setLeaf(witnessIndex, user.hash());
@@ -93,26 +103,38 @@ describe('zkAnvil', () => {
     userAccount: PublicKey,
     userKey: PrivateKey
   ) {
+    let zkBalanceBefore = Mina.getBalance(zkAppAddress);
+
     let w = tree.getWitness(witnessIndex);
     let witness = new ZkAnvilMerkleWitness(w);
 
     let item = user.items[Number(slotIndex.value)];
 
-    let upgradeNumber = item.upgrade.add(UInt32.from(1));
-    let upgradedItem = new Item({
-      id: item.id,
-      upgrade: upgradeNumber,
-    });
-
+    let result: Bool = Bool(false);
+    let upgraded: Item;
     let upgradeItemTxn = await Mina.transaction(userAccount, () => {
-      zkAnvilApp.upgradeItem(user, UInt32.from(0), item, witness);
+      result = zkAnvilApp.upgradeItem(user, slotIndex, item, witness);
     });
     await upgradeItemTxn.prove();
-    let result = await upgradeItemTxn.sign([userKey]).send();
+    await upgradeItemTxn.sign([userKey]).send();
 
-    console.log(result);
+    let zkBalanceAfter = Mina.getBalance(zkAppAddress);
+    expect(zkBalanceAfter).toEqual(zkBalanceBefore.add(UInt64.from(5)));
 
-    user = user.updateItem(UInt32.from(0), upgradedItem);
+    if (result.toString() === 'true') {
+      let upgradeNumber = item.upgrade.add(UInt32.from(1));
+      upgraded = new Item({
+        id: item.id,
+        upgrade: upgradeNumber,
+      });
+    } else {
+      upgraded = new Item({
+        id: UInt32.from(0),
+        upgrade: UInt32.from(0),
+      });
+    }
+
+    user = user.updateItem(UInt32.from(slotIndex), upgraded);
     tree.setLeaf(witnessIndex, user.hash());
 
     expect(zkAnvilApp.merkleRoot.getAndRequireEquals()).toEqual(tree.getRoot());
@@ -186,15 +208,58 @@ describe('zkAnvil', () => {
     //await localBuyItem(0n, user1, UInt32.from(1), 3001, user1Account, user1Key);
   });
 
-  it('should buy item and upgrade', async () => {
+  it('should buy item and try upgrade first', async () => {
     await localDeploy();
 
     await localAddUser(0n, user1);
 
     await localBuyItem(0n, user1, UInt32.from(0), 1001, user1Account, user1Key);
-    console.log('before', JSON.stringify(user1));
+
     await localUpgradeItem(0n, user1, UInt32.from(0), user1Account, user1Key);
-    console.log('after', JSON.stringify(user1));
-    console.log(JSON.stringify(zkAnvilApp.getTimestamp()));
+  });
+
+  it('should buy item and try upgrade second', async () => {
+    await localDeploy();
+
+    await localAddUser(0n, user1);
+
+    await localBuyItem(0n, user1, UInt32.from(0), 1001, user1Account, user1Key);
+
+    await localUpgradeItem(0n, user1, UInt32.from(0), user1Account, user1Key);
+  });
+
+  it('should buy item and try upgrade third', async () => {
+    await localDeploy();
+
+    await localAddUser(0n, user1);
+
+    await localBuyItem(0n, user1, UInt32.from(0), 1001, user1Account, user1Key);
+
+    await localUpgradeItem(0n, user1, UInt32.from(0), user1Account, user1Key);
+  });
+
+  it('should withdraw', async () => {
+    await localDeploy();
+
+    await localAddUser(0n, user1);
+
+    await localBuyItem(0n, user1, UInt32.from(0), 1001, user1Account, user1Key);
+
+    await localUpgradeItem(0n, user1, UInt32.from(0), user1Account, user1Key);
+
+    let zkBalanceBefore = Mina.getBalance(zkAppAddress);
+    let adminBalanceBefore = Mina.getBalance(adminAccount);
+
+    let withdrawTxn = await Mina.transaction(adminAccount, () => {
+      zkAnvilApp.withdraw(UInt64.from(7));
+    });
+    await withdrawTxn.prove();
+    await withdrawTxn.sign([adminKey]).send();
+
+    let zkBalanceAfter = Mina.getBalance(zkAppAddress);
+    let adminBalanceAfter = Mina.getBalance(adminAccount);
+
+    expect(zkBalanceAfter).toEqual(zkBalanceBefore.sub(UInt64.from(7)));
+    expect(adminBalanceAfter).toEqual(adminBalanceBefore.add(UInt64.from(7)));
   });
 });

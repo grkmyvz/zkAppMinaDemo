@@ -13,8 +13,8 @@
  * Run with node:     `$ node build/src/interact.js <deployAlias>`.
  */
 import fs from 'fs/promises';
-import { MerkleTree, Mina, PrivateKey, UInt32 } from 'o1js';
-import { Item, User, ZkAnvilMerkleWitness, zkAnvil } from './zkAnvil';
+import { Mina, PrivateKey } from 'o1js';
+import { Add } from './Add.js';
 
 // check command line arg
 let deployAlias = process.argv[2];
@@ -58,29 +58,17 @@ const fee = Number(config.fee) * 1e9; // in nanomina (1 billion = 1.0 mina)
 Mina.setActiveInstance(Network);
 let feepayerAddress = feepayerKey.toPublicKey();
 let zkAppAddress = zkAppKey.toPublicKey();
-let zkApp = new zkAnvil(zkAppAddress);
+let zkApp = new Add(zkAppAddress);
 
 let sentTx;
 // compile the contract to create prover keys
 console.log('compile the contract...');
-await zkAnvil.compile();
+await Add.compile();
 try {
   // call update() and send transaction
   console.log('build transaction and create proof...');
-  let tree: MerkleTree = new MerkleTree(8);
-  let w = tree.getWitness(0n);
-  let witness = new ZkAnvilMerkleWitness(w);
-  let admin: User = new User({
-    publicKey: PrivateKey.random().toPublicKey(),
-    items: Array.from({ length: 6 }, () => {
-      return new Item({
-        id: UInt32.from(0),
-        upgrade: UInt32.from(0),
-      });
-    }),
-  });
   let tx = await Mina.transaction({ sender: feepayerAddress, fee }, () => {
-    zkApp.addUser(admin, witness);
+    zkApp.update();
   });
   await tx.prove();
   console.log('send transaction...');

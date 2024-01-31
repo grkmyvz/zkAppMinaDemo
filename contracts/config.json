@@ -1,13 +1,13 @@
 {
   "version": 1,
   "deployAliases": {
-    "testminacontract": {
+    "zkanvil": {
       "url": "https://proxy.berkeley.minaexplorer.com/graphql",
-      "keyPath": "keys/testminacontract.json",
+      "keyPath": "keys/zkanvil.json",
       "feepayerKeyPath": "/Users/gorkemyavuz/.cache/zkapp-cli/keys/deployer.json",
       "feepayerAlias": "deployer",
       "fee": "0.1",
-      "smartContract": "Add"
+      "smartContract": "zkAnvil"
     }
   }
 }

@@ -4,11 +4,15 @@ type Transaction = Awaited<ReturnType<typeof Mina.transaction>>;
 
 // ---------------------------------------------------------------------------------------
 
-import type { Add } from "../../../contracts/src/Add";
+import type {
+  User,
+  ZkAnvilMerkleWitness,
+  zkAnvil,
+} from "../../../contracts/src/zkAnvil";
 
 const state = {
-  Add: null as null | typeof Add,
-  zkapp: null as null | Add,
+  zkAnvil: null as null | typeof zkAnvil,
+  zkapp: null as null | zkAnvil,
   transaction: null as null | Transaction,
 };
 
@@ -23,11 +27,11 @@ const functions = {
     Mina.setActiveInstance(Berkeley);
   },
   loadContract: async (args: {}) => {
-    const { Add } = await import("../../../contracts/build/src/Add.js");
-    state.Add = Add;
+    const { zkAnvil } = await import("../../../contracts/build/src/zkAnvil.js");
+    state.zkAnvil = zkAnvil;
   },
   compileContract: async (args: {}) => {
-    await state.Add!.compile();
+    await state.zkAnvil!.compile();
   },
   fetchAccount: async (args: { publicKey58: string }) => {
     const publicKey = PublicKey.fromBase58(args.publicKey58);
@@ -35,15 +39,28 @@ const functions = {
   },
   initZkappInstance: async (args: { publicKey58: string }) => {
     const publicKey = PublicKey.fromBase58(args.publicKey58);
-    state.zkapp = new state.Add!(publicKey);
+    state.zkapp = new state.zkAnvil!(publicKey);
   },
-  getNum: async (args: {}) => {
-    const currentNum = await state.zkapp!.num.get();
-    return JSON.stringify(currentNum.toJSON());
+  // getNum: async (args: {}) => {
+  //   const currentNum = await state.zkapp!.num.get();
+  //   return JSON.stringify(currentNum.toJSON());
+  // },
+  // createUpdateTransaction: async (args: {}) => {
+  //   const transaction = await Mina.transaction(() => {
+  //     state.zkapp!.update();
+  //   });
+  //   state.transaction = transaction;
+  // },
+  getMerkleRoot: async (args: {}) => {
+    const merkleRoot = state.zkapp!.merkleRoot.get();
+    return JSON.stringify(merkleRoot.toJSON());
   },
-  createUpdateTransaction: async (args: {}) => {
+  createAddUserTransaction: async (args: {
+    user: User;
+    path: ZkAnvilMerkleWitness;
+  }) => {
     const transaction = await Mina.transaction(() => {
-      state.zkapp!.update();
+      state.zkapp!.addUser(args.user, args.path);
     });
     state.transaction = transaction;
   },

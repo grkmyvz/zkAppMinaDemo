@@ -195,6 +195,7 @@ describe('zkAnvil', () => {
     await localDeploy();
 
     await localAddUser(0n, user1);
+    console.log(JSON.stringify(user1));
   });
 
   it('should buy item', async () => {

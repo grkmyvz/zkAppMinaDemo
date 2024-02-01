@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import "./reactCOIServiceWorker";
 import ZkappWorkerClient from "./zkappWorkerClient";
-import { PublicKey, Field } from "o1js";
+import { PublicKey, Field, UInt32, MerkleTree } from "o1js";
 import GradientBG from "../components/GradientBG.js";
 import styles from "../styles/Home.module.css";
+import { ZkAnvilMerkleWitness } from "../../../contracts/src/zkAnvil";
 
 let transactionFee = 0.1;
-const ZKAPP_ADDRESS = "B62qnucvUpQ8xgeAdS2ynJmKS2iF2nopamtQpoWgF71sfwMx6nXAQk8";
+const ZKAPP_ADDRESS = "B62qjyq7A7dk4tzeV57XPRaXyPzPhWiQtFDijwLg2rPQAzJiaDwZLt5";
 
 export default function Home() {
   const [state, setState] = useState({
@@ -83,10 +84,22 @@ export default function Home() {
         console.log("Getting zkApp state...");
         setDisplayText("Getting zkApp state...");
         await zkappWorkerClient.fetchAccount({ publicKey: zkappPublicKey });
-        const currentNum = await zkappWorkerClient.getNum();
-        console.log(`Current state in zkApp: ${currentNum.toString()}`);
-        setDisplayText("");
+        // const currentNum = await zkappWorkerClient.getNum();
+        // console.log(`Current state in zkApp: ${currentNum.toString()}`);
+        // setDisplayText("");
 
+        // setState({
+        //   ...state,
+        //   zkappWorkerClient,
+        //   hasWallet: true,
+        //   hasBeenSetup: true,
+        //   publicKey,
+        //   zkappPublicKey,
+        //   accountExists,
+        //   currentNum,
+        // });
+
+        // TODO: Remove this
         setState({
           ...state,
           zkappWorkerClient,
@@ -95,8 +108,10 @@ export default function Home() {
           publicKey,
           zkappPublicKey,
           accountExists,
-          currentNum,
+          currentNum: new Field(0),
         });
+        const merkleRoot = await zkappWorkerClient.getMerkleRoot();
+        console.log("Merkle Root", merkleRoot);
       }
     })();
   }, []);
@@ -137,7 +152,7 @@ export default function Home() {
       publicKey: state.publicKey!,
     });
 
-    await state.zkappWorkerClient!.createUpdateTransaction();
+    //await state.zkappWorkerClient!.createUpdateTransaction();
 
     setDisplayText("Creating proof...");
     console.log("Creating proof...");
@@ -166,6 +181,37 @@ export default function Home() {
     setState({ ...state, creatingTransaction: false });
   };
 
+  const createUser = async () => {
+    setState({ ...state, creatingTransaction: true });
+
+    setDisplayText("Creating a transaction...");
+    console.log("Creating a transaction...");
+
+    await state.zkappWorkerClient!.fetchAccount({
+      publicKey: state.publicKey!,
+    });
+
+    // const user: User = new User({
+    //   publicKey: state.publicKey!,
+    //   items: Array.from({ length: 6 }, () => {
+    //     return new Item({
+    //       id: UInt32.from(0),
+    //       upgrade: UInt32.from(0),
+    //     });
+    //   }),
+    // });
+
+    const tree = new MerkleTree(8);
+    const w = tree.getWitness(0n);
+    const path = new ZkAnvilMerkleWitness(w);
+
+    //await state.zkappWorkerClient!.createAddUserTransaction(user, path);
+
+    setDisplayText("Creating proof...");
+    console.log("Creating proof...");
+    //await state.zkappWorkerClient!.proveUpdateTransaction();
+  };
+
   // -------------------------------------------------------
   // Refresh the current state
 
@@ -176,10 +222,10 @@ export default function Home() {
     await state.zkappWorkerClient!.fetchAccount({
       publicKey: state.zkappPublicKey!,
     });
-    const currentNum = await state.zkappWorkerClient!.getNum();
-    setState({ ...state, currentNum });
-    console.log(`Current state in zkApp: ${currentNum.toString()}`);
-    setDisplayText("");
+    // const currentNum = await state.zkappWorkerClient!.getNum();
+    // setState({ ...state, currentNum });
+    // console.log(`Current state in zkApp: ${currentNum.toString()}`);
+    // setDisplayText("");
   };
 
   // -------------------------------------------------------

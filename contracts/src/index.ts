@@ -1,3 +1,3 @@
-import { zkAnvil } from './zkAnvil';
+import { zkAnvil, User, Item, ZkAnvilMerkleWitness } from './zkAnvil';
 
-export { zkAnvil };
+export { zkAnvil, User, Item, ZkAnvilMerkleWitness };

@@ -5,7 +5,6 @@ import type {
   ZkappWorkerReponse,
   WorkerFunctions,
 } from "./zkappWorker";
-import { User, ZkAnvilMerkleWitness } from "../../../contracts/src/zkAnvil";
 
 export default class ZkappWorkerClient {
   // ---------------------------------------------------------------------------------------
@@ -50,11 +49,11 @@ export default class ZkappWorkerClient {
 
   async getMerkleRoot(): Promise<Field> {
     const result = await this._call("getMerkleRoot", {});
-    return Field.fromJSON(JSON.parse(result as string));
+    return result as Field;
   }
 
-  createAddUserTransaction(user: User, path: ZkAnvilMerkleWitness) {
-    return this._call("createAddUserTransaction", { user, path });
+  createAddUserTransaction(publicKey: PublicKey) {
+    return this._call("createAddUserTransaction", { publicKey });
   }
 
   proveUpdateTransaction() {

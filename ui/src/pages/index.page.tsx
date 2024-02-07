@@ -4,10 +4,9 @@ import ZkappWorkerClient from "./zkappWorkerClient";
 import { PublicKey, Field, UInt32, MerkleTree } from "o1js";
 import GradientBG from "../components/GradientBG.js";
 import styles from "../styles/Home.module.css";
-import { ZkAnvilMerkleWitness } from "../../../contracts/src/zkAnvil";
 
 let transactionFee = 0.1;
-const ZKAPP_ADDRESS = "B62qjyq7A7dk4tzeV57XPRaXyPzPhWiQtFDijwLg2rPQAzJiaDwZLt5";
+const ZKAPP_ADDRESS = "B62qjnUNpWvxiW4pGXCc8K3ZauY1utDDqrA8VJPvmH2UEeJfSRoAqRW";
 
 export default function Home() {
   const [state, setState] = useState({
@@ -67,10 +66,14 @@ export default function Home() {
         const res = await zkappWorkerClient.fetchAccount({
           publicKey: publicKey!,
         });
+
+        console.log("res", res);
+
         const accountExists = res.error == null;
+        //const accountExists = true;
 
         await zkappWorkerClient.loadContract();
-
+        console.log("asdasdasdasdas");
         console.log("Compiling zkApp...");
         setDisplayText("Compiling zkApp...");
         await zkappWorkerClient.compileContract();
@@ -83,23 +86,17 @@ export default function Home() {
 
         console.log("Getting zkApp state...");
         setDisplayText("Getting zkApp state...");
-        await zkappWorkerClient.fetchAccount({ publicKey: zkappPublicKey });
+        const x = await zkappWorkerClient.fetchAccount({
+          publicKey: zkappPublicKey,
+        });
+        const asd = x.error == null;
         // const currentNum = await zkappWorkerClient.getNum();
         // console.log(`Current state in zkApp: ${currentNum.toString()}`);
         // setDisplayText("");
+        console.log("asd", asd);
+        const merkleRoot = await zkappWorkerClient.getMerkleRoot();
+        console.log("sqweqweqwdasda2");
 
-        // setState({
-        //   ...state,
-        //   zkappWorkerClient,
-        //   hasWallet: true,
-        //   hasBeenSetup: true,
-        //   publicKey,
-        //   zkappPublicKey,
-        //   accountExists,
-        //   currentNum,
-        // });
-
-        // TODO: Remove this
         setState({
           ...state,
           zkappWorkerClient,
@@ -108,10 +105,8 @@ export default function Home() {
           publicKey,
           zkappPublicKey,
           accountExists,
-          currentNum: new Field(0),
+          currentNum: merkleRoot,
         });
-        const merkleRoot = await zkappWorkerClient.getMerkleRoot();
-        console.log("Merkle Root", merkleRoot);
       }
     })();
   }, []);
@@ -182,6 +177,7 @@ export default function Home() {
   };
 
   const createUser = async () => {
+    console.log("##### createUser #####");
     setState({ ...state, creatingTransaction: true });
 
     setDisplayText("Creating a transaction...");
@@ -191,25 +187,33 @@ export default function Home() {
       publicKey: state.publicKey!,
     });
 
-    // const user: User = new User({
-    //   publicKey: state.publicKey!,
-    //   items: Array.from({ length: 6 }, () => {
-    //     return new Item({
-    //       id: UInt32.from(0),
-    //       upgrade: UInt32.from(0),
-    //     });
-    //   }),
-    // });
-
-    const tree = new MerkleTree(8);
-    const w = tree.getWitness(0n);
-    const path = new ZkAnvilMerkleWitness(w);
-
-    //await state.zkappWorkerClient!.createAddUserTransaction(user, path);
+    await state.zkappWorkerClient!.createAddUserTransaction(state.publicKey!);
 
     setDisplayText("Creating proof...");
     console.log("Creating proof...");
-    //await state.zkappWorkerClient!.proveUpdateTransaction();
+    await state.zkappWorkerClient!.proveUpdateTransaction();
+
+    console.log("Requesting send transaction...");
+    setDisplayText("Requesting send transaction...");
+    const transactionJSON = await state.zkappWorkerClient!.getTransactionJSON();
+
+    setDisplayText("Getting transaction JSON...");
+    console.log("Getting transaction JSON...");
+    const { hash } = await (window as any).mina.sendTransaction({
+      transaction: transactionJSON,
+      feePayer: {
+        fee: transactionFee,
+        memo: "",
+      },
+    });
+
+    const transactionLink = `https://berkeley.minaexplorer.com/transaction/${hash}`;
+    console.log(`View transaction at ${transactionLink}`);
+
+    setTransactionLink(transactionLink);
+    setDisplayText(transactionLink);
+
+    setState({ ...state, creatingTransaction: false });
   };
 
   // -------------------------------------------------------
@@ -283,7 +287,7 @@ export default function Home() {
         </div>
         <button
           className={styles.card}
-          onClick={onSendTransaction}
+          onClick={createUser}
           disabled={state.creatingTransaction}
         >
           Send Transaction

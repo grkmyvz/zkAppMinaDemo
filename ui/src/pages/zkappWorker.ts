@@ -1,13 +1,14 @@
-import { Mina, PublicKey, fetchAccount } from "o1js";
+import { Field, MerkleTree, Mina, PublicKey, UInt32, fetchAccount } from "o1js";
 
 type Transaction = Awaited<ReturnType<typeof Mina.transaction>>;
 
 // ---------------------------------------------------------------------------------------
 
-import type {
+import {
+  zkAnvil,
   User,
   ZkAnvilMerkleWitness,
-  zkAnvil,
+  Item,
 } from "../../../contracts/src/zkAnvil";
 
 const state = {
@@ -51,18 +52,27 @@ const functions = {
   //   });
   //   state.transaction = transaction;
   // },
-  getMerkleRoot: async (args: {}) => {
+  getMerkleRoot: async (args: {}): Promise<Field> => {
     const merkleRoot = state.zkapp!.merkleRoot.get();
-    return JSON.stringify(merkleRoot.toJSON());
+    return merkleRoot;
   },
-  createAddUserTransaction: async (args: {
-    user: User;
-    path: ZkAnvilMerkleWitness;
-  }) => {
-    const transaction = await Mina.transaction(() => {
-      state.zkapp!.addUser(args.user, args.path);
-    });
-    state.transaction = transaction;
+  createAddUserTransaction: async (args: { publicKey: PublicKey }) => {
+    // const user: User = new User({
+    //   publicKey: args.publicKey,
+    //   items: Array.from({ length: 6 }, () => {
+    //     return new Item({
+    //       id: UInt32.from(0),
+    //       upgrade: UInt32.from(0),
+    //     });
+    //   }),
+    // });
+    // const tree = new MerkleTree(8);
+    // const w = tree.getWitness(0n);
+    // const path = new ZkAnvilMerkleWitness(w);
+    // const transaction = await Mina.transaction(() => {
+    //   state.zkapp!.addUser(user, path);
+    // });
+    // state.transaction = transaction;
   },
   proveUpdateTransaction: async (args: {}) => {
     await state.transaction!.prove();
